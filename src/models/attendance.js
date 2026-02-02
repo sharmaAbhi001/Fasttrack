@@ -30,6 +30,11 @@ const attendanceSchema = new Schema({
   },
 },{ timestamps: true });
 
+attendanceSchema.index(
+  { tenantId: 1, workerId: 1, projectId: 1, date: 1 },
+  { unique: true }
+);
+
 export const Attendance =
   mongoose.models.Attendance ||
   mongoose.model("Attendance", attendanceSchema);

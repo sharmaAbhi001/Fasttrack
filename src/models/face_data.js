@@ -12,6 +12,7 @@ const faceDataSchema = new Schema({
         type: Schema.Types.ObjectId,
         ref: "Worker",
         required: true,
+        unique: true,
     },
     faceImageUrl: {
         type: String,

@@ -22,6 +22,11 @@ const attendanceCorrectionSchema = new Schema({
   },
 },{ timestamps: true });
 
+attendanceCorrectionSchema.index(
+  { attendanceId: 1 },
+  { unique: true }
+);
+
 export const AttendanceCorrection =
   mongoose.models.AttendanceCorrection ||
   mongoose.model("AttendanceCorrection", attendanceCorrectionSchema);

@@ -32,7 +32,7 @@ const advanceSchema = new Schema({
     },
     approvedBy: {
         type: Schema.Types.ObjectId,
-        ref: "Users",
+        ref: "User",
     },
 },{timestamps: true});
 

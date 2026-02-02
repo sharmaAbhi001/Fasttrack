@@ -7,6 +7,7 @@ const userSchema = new Schema({
         type: Schema.Types.ObjectId,
         ref: "UserAuth",
         required: true,
+        unique:true,
     },
     tenantId: {
         type: Schema.Types.ObjectId,
@@ -37,5 +38,8 @@ const userSchema = new Schema({
         default: "active",
     },
 },{timestamps: true});
+
+// users schema
+userSchema.index({ authId: 1, tenantId: 1 }, { unique: true }); //Indexes: { authId: 1, tenantId: 1 } UNIQUE
 
 export const User = mongoose.models.User || mongoose.model("User", userSchema);

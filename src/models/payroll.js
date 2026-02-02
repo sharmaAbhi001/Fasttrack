@@ -30,5 +30,10 @@ const payrollSchema = new Schema({
   },
 },{ timestamps: true });
 
+payrollSchema.index(
+  { tenantId: 1, projectId: 1, month: 1, year: 1 },
+  { unique: true }
+);
+
 export const Payroll =
   mongoose.models.Payroll || mongoose.model("Payroll", payrollSchema);

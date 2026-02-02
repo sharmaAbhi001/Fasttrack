@@ -28,6 +28,16 @@ const projectMemberSchema = new Schema({
   },
 },{ timestamps: true });
 
+projectMemberSchema.index(
+  { workerId: 1, projectId: 1 },
+  { unique: true, sparse: true }
+);
+
+projectMemberSchema.index(
+  { userId: 1, projectId: 1 },
+  { unique: true, sparse: true }
+)
+
 export const ProjectMember =
   mongoose.models.ProjectMember ||
   mongoose.model("ProjectMember", projectMemberSchema);
