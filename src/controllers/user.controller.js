@@ -4,6 +4,8 @@ import { Role } from "../models/role.js";
 
 import { User } from "../models/users.js";
 import mongoose from "mongoose";
+import { Project } from "../models/project.js";
+import { ProjectMember } from "../models/projectMember.js";
 
 
 
@@ -137,6 +139,8 @@ export const getUsers = async (req, res) => {
 
 }
 
+
+
 export const editUser = async (req, res) => {
     const { userId } = req.params;
     const { email, password, name, roleId } = req.body;
@@ -207,3 +211,93 @@ export const editUser = async (req, res) => {
         session.endSession();
     }
 }
+
+export const getUserById = async (req, res) => {
+    try {
+        const { userId } = req.params;
+        const { tenantId } = req.userData;
+
+        if (!tenantId) {
+            return res.status(400).json({ success: false, message: "Tenant not found" });
+        }
+
+        const user = await User.findOne({ _id: userId, tenantId }).select("_id name roleId phone address authId").lean();
+
+        if (!user) {
+            return res.status(404).json({ success: false, message: "User not found" });
+        }
+
+        const role = await Role.findById(user.roleId).select("_id name").lean();
+        const auth = await UserAuth.findById(user.authId).select("email status").lean();
+
+        const response = {
+            id: user._id,
+            name: user.name,
+            email: auth?.email || null,
+            role: role ? { id: role._id, name: role.name } : null,
+            phone: user.phone || null,
+            address: user.address || null
+        };
+
+        return res.status(200).json({ success: true, data: response });
+
+    } catch (error) {
+        console.log(error);
+        return res.status(500).json({ success: false, message: error.message });
+    }
+}
+
+    export const assignUserToProject = async (req, res) => {
+        const session = await mongoose.startSession();
+        session.startTransaction();
+        try {
+            const { userId, projectId } = req.params;
+            const { tenantId } = req.userData;
+            const { startDate, endDate } = req.body;
+
+            if (!tenantId) {
+                await session.abortTransaction();
+                return res.status(400).json({ success: false, message: "Tenant not found" });
+            }
+
+            // Validate user
+            const user = await User.findOne({ _id: userId, tenantId }).session(session);
+            if (!user) {
+                await session.abortTransaction();
+                return res.status(404).json({ success: false, message: "User not found" });
+            }
+
+            // Validate project
+            const project = await Project.findOne({ _id: projectId, tenantId }).session(session);
+            if (!project) {
+                await session.abortTransaction();
+                return res.status(404).json({ success: false, message: "Project not found" });
+            }
+
+            const doc = {
+                tenantId,
+                userId: user._id,
+                projectId: project._id,
+                startDate: startDate ? new Date(startDate) : new Date(),
+            };
+
+            if (endDate) doc.endDate = new Date(endDate);
+
+            // Create membership (unique index prevents duplicates)
+            await ProjectMember.create([doc], { session });
+
+            await session.commitTransaction();
+
+            return res.status(200).json({ success: true, message: "User assigned to project", data: { userId: user._id, projectId: project._id } });
+
+        } catch (error) {
+            await session.abortTransaction();
+            console.log(error);
+            if (error && error.code === 11000) {
+                return res.status(400).json({ success: false, message: "User already assigned to this project" });
+            }
+            return res.status(500).json({ success: false, message: error.message });
+        } finally {
+            session.endSession();
+        }
+    }
