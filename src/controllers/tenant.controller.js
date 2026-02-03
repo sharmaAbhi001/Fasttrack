@@ -243,3 +243,52 @@ export const getTenantRoles = async (req,res) => {
    }
 
 }
+
+export const updateTenant = async (req, res) => {
+   try {
+      const { tenantId } = req.userData;
+      const { name, gstNumber } = req.body;
+
+      // Validate input
+      if (!name || !gstNumber) {
+         return res.status(400).json({
+            success: false,
+            message: "Name and GST number are required"
+         });
+      }
+
+      // Update tenant
+      const updatedTenant = await Tenant.findByIdAndUpdate(
+         tenantId,
+         {
+            name,
+            gSTNumber: gstNumber
+         },
+         { new: true, runValidators: true }
+      );
+
+      if (!updatedTenant) {
+         return res.status(404).json({
+            success: false,
+            message: "Tenant not found"
+         });
+      }
+
+      res.status(200).json({
+         success: true,
+         message: "Tenant information updated successfully",
+         data: {
+            id: updatedTenant._id,
+            name: updatedTenant.name,
+            gstNumber: updatedTenant.gSTNumber
+         }
+      });
+
+   } catch (error) {
+      console.log(error);
+      res.status(400).json({
+         success: false,
+         message: error.message
+      });
+   }
+} 

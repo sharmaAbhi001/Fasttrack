@@ -4,7 +4,7 @@ import { Role } from "../models/role.js";
 
 import { User } from "../models/users.js";
 import mongoose from "mongoose";
-import { pipeline } from "zod/v3";
+
 
 
 export const createUser = async (req, res) => {
@@ -135,4 +135,75 @@ export const getUsers = async (req, res) => {
    }
 
 
+}
+
+export const editUser = async (req, res) => {
+    const { userId } = req.params;
+    const { email, password, name, roleId } = req.body;
+    const { tenantId } = req.userData;
+
+    const session = await mongoose.startSession();
+    session.startTransaction();
+
+    try {
+        // Validate required fields
+        if (!email || !password || !name || !roleId) {
+            return res.status(400).json({
+                success: false,
+                message: "Email, password, name, and roleId are required"
+            });
+        }
+
+        // Check if the new role exists in the tenant
+        const validRole = await Role.findOne({ tenantId, _id: roleId }, null, { session });
+        if (!validRole) {
+            await session.abortTransaction();
+            return res.status(400).json({ success: false, message: "Role not found" });
+        }
+
+        // Find the user
+        const user = await User.findOne({ _id: userId, tenantId }, null, { session });
+        if (!user) {
+            await session.abortTransaction();
+            return res.status(404).json({ success: false, message: "User not found" });
+        }
+
+        // Find and update auth user (email and password) - use save() to trigger pre-hooks
+        const authUser = await UserAuth.findById(user.authId, null, { session });
+        if (!authUser) {
+            await session.abortTransaction();
+            return res.status(404).json({ success: false, message: "Auth user not found" });
+        }
+
+        authUser.email = email;
+        authUser.password = password;
+        await authUser.save({ session });
+
+        // Update user (name, roleId, and email)
+        const updatedUser = await User.findByIdAndUpdate(
+            userId,
+            { name, roleId, email },
+            { new: true, runValidators: true, session }
+        );
+
+        await session.commitTransaction();
+
+        return res.status(200).json({
+            success: true,
+            message: "User updated successfully",
+            data: {
+                id: updatedUser._id,
+                name: updatedUser.name,
+                email: updatedUser.email,
+                roleId: updatedUser.roleId
+            }
+        });
+
+    } catch (error) {
+        await session.abortTransaction();
+        console.log(error);
+        return res.status(400).json({ success: false, message: error.message });
+    } finally {
+        session.endSession();
+    }
 }
