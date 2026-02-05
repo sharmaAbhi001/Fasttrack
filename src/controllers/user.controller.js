@@ -1,4 +1,3 @@
-import { json, success } from "zod";
 import { UserAuth } from "../models/auth_users.js";
 import { Role } from "../models/role.js";
 
@@ -247,7 +246,7 @@ export const getUserById = async (req, res) => {
     }
 }
 
-    export const assignUserToProject = async (req, res) => {
+export const assignUserToProject = async (req, res) => {
         const session = await mongoose.startSession();
         session.startTransaction();
         try {
