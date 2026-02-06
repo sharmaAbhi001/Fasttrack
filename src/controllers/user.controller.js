@@ -13,6 +13,9 @@ export const createUser = async (req, res) => {
     const { email, password , name ,phone , address , roleId  } = req.body;
     const {tenantId} = req.userData;
 
+    const session = await mongoose.startSession();
+    session.startTransaction();
+
     try {
         
         // create auth user
@@ -34,34 +37,35 @@ export const createUser = async (req, res) => {
             })
         }
 
-          const authUser = await UserAuth.create({
-            email,
-            password,
-            type:"tenantUser",
-            
-        });
-
-        
-
+          const authUser = await UserAuth.create([{email , password , type: "tenantUser"}],{session});
 
     // create user 
-    const user = await User.create({
-        authId:authUser._id,
+    const user = await User.create([{
+        authId:authUser[0]._id,
         tenantId:tenantId,
         roleId:validRole._id,
         name:name,
         phone:phone,
         address:address,
-    })
+    }],{session});
+
+    await session.commitTransaction();
 
 
   
-    return res.status(201).json({success: true, message: "User created successfully",data:user});
+    return res.status(201).json({success: true, message: "User created successfully",data:user[0]});
   
 
     } catch (error) {
         console.log(error)
-        return res.status(400).json({success: false, message: "User not created"});
+            if (error.code === 11000) {
+            return res.status(400).json({ success: false, message:`worker already exist with this ${error.keyValue}` });
+        }else{
+            return res.status(400).json({success: false, message: error.message });
+        }
+        
+    }finally{
+        session.endSession();
     }
 
 }
@@ -287,7 +291,7 @@ export const assignUserToProject = async (req, res) => {
 
             await session.commitTransaction();
 
-            return res.status(200).json({ success: true, message: "User assigned to project", data: { userId: user._id, projectId: project._id } });
+            return res.status(200).json({ success: true, message: "User assigned to project", data: { userId:user._id, userName:user.name, projectId:project._id, projectName:project.name , startDate, } });
 
         } catch (error) {
             await session.abortTransaction();
@@ -299,4 +303,4 @@ export const assignUserToProject = async (req, res) => {
         } finally {
             session.endSession();
         }
-    }
+}

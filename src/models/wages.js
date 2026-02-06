@@ -18,6 +18,14 @@ const wagesSchema = new Schema({
   overtimeRate: {
     type: Number,
   },
+  effectiveFromDate: {
+    type: Date,
+    default: Date.now,
+    required: true,
+  },
+  effectiveToDate: {
+    type: Date,
+  },
 },{ timestamps: true });
 
 export const Wages =

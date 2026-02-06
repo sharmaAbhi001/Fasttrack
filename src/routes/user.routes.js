@@ -12,7 +12,7 @@ const router = express.Router();
 
 router.post("/", validateData(userCreateSchema),permissionValidation(["FULL_ACCESS"]), createUser);
 router.get("/", permissionValidation(["FULL_ACCESS"]), getUsers);
-router.get("/:userId", permissionValidation(["FULL_ACCESS", "VIEW_USER"]), getUserById);
+router.get("/:userId", permissionValidation(["FULL_ACCESS"]), getUserById);
 router.patch("/:userId", permissionValidation(["FULL_ACCESS"]), editUser);
 router.post("/:userId/assign-member/:projectId", permissionValidation(["FULL_ACCESS"]), assignUserToProject);
 

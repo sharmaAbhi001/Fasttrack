@@ -1,5 +1,6 @@
 
 import mongoose ,{Schema} from "mongoose";
+import { encrypt } from "../utils/encryption.js";
 
 
 
@@ -13,6 +14,10 @@ const workerDocumentSchema = new Schema({
         type: String,
         required: true, 
     },
+    documentNumber: {
+        type: String,
+        required: true, 
+    },
     documentUrl: {
         type: String,   
     },
@@ -21,5 +26,12 @@ const workerDocumentSchema = new Schema({
         required: true,
     }
 },{timestamps: true});
+
+
+workerDocumentSchema.pre('save', function(next) {
+   if (this.isModified('documentNumber')) {
+       this.documentNumber = encrypt(this.documentNumber);
+   }
+});
 
 export const WorkerDocument = mongoose.models.WorkerDocument || mongoose.model("WorkerDocument", workerDocumentSchema);

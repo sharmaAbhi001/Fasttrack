@@ -72,6 +72,7 @@ export const permissionValidation = (requiredPermissions=[]) => {
 
         console.log("mai chala ")
 
+
    const permissionCodes = rolePermissions.map(p => p.permissionId?.code).filter(Boolean);
 
  const hasPermission = requiredPermissions.some(rp =>

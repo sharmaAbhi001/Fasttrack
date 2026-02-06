@@ -6,6 +6,11 @@ const workerSchema = new Schema({
     ref: "Tenant",
     required: true,
   },
+  code:{
+    type:String,
+    required:true,
+    unique:true
+  },
   name: {
     type: String,
     required: true,
@@ -25,6 +30,8 @@ const workerSchema = new Schema({
     default: "active",
   },
 },{ timestamps: true });
+
+workerSchema.index({ tenantId: 1, code: 1 }, { unique: true });
 
 export const Worker =
   mongoose.models.Worker || mongoose.model("Worker", workerSchema);

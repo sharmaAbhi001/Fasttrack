@@ -3,24 +3,49 @@ import mongoose from "mongoose";
 import { Project } from "../models/project.js";
 import { ProjectMember } from "../models/projectMember.js";
 import { Attendance } from "../models/attendance.js";
+import { WorkerDocument } from "../models/worker_documents.js";
+import { Wages } from "../models/wages.js";
 
 export const createWorker = async (req, res) => {
+
+    const session = await mongoose.startSession();
+    session.startTransaction();
+
     try {
         const { tenantId } = req.userData;
-        const { name, phone, address, joinDate, status } = req.body;
+        const { code, name, phone, address, joinDate, status ,documentType,documentNumber } = req.body;
 
         if (!tenantId) {
             return res.status(400).json({ success: false, message: "Tenant not found" });
+
+            }
+
+        const existingWorker = await Worker.findOne({ tenantId, code }).session(session);
+        if (existingWorker) {
+            session.abortTransaction();
+            return res.status(400).json({ success: false, message: "Please enter unique worker code" });
         }
 
-        const worker = await Worker.create({
+        const worker = await Worker.create([{
             tenantId,
+            code,
             name,
             phone,
             address,
             joinDate,
             status: status || "active",
-        });
+        }],{session});
+
+        const workerDocument = await WorkerDocument.create([{
+            tenantId,
+            workerId: worker[0]._id,
+            documentType,
+            documentNumber:documentNumber,
+            documentUrl: "https://example.com/aadhar-card.pdf",
+            uploadedAt: new Date(),
+        }],{session})
+
+        await session.commitTransaction();
 
         return res.status(201).json({
             success: true,
@@ -29,11 +54,13 @@ export const createWorker = async (req, res) => {
         });
 
     } catch (error) {
-        console.log(error);
+        session.abortTransaction();
         if (error.code === 11000) {
-            return res.status(400).json({ success: false, message: "Worker with this phone already exists" });
+            return res.status(400).json({ success: false, message: "Worker with this code already exists" });
         }
         return res.status(400).json({ success: false, message: error.message });
+    }finally {
+        session.endSession();
     }
 };
 
@@ -160,7 +187,7 @@ export const assignWorkerToProject = async (req, res) => {
     try {
         const { workerId, projectId } = req.params;
         const { tenantId } = req.userData;
-        const { startDate, endDate } = req.body;
+        const { startDate,workerWages, endDate } = req.body;
 
         if (!tenantId) {
             await session.abortTransaction();
@@ -173,6 +200,23 @@ export const assignWorkerToProject = async (req, res) => {
             await session.abortTransaction();
             return res.status(404).json({ success: false, message: "Worker not found" });
         }
+
+
+
+     
+                    // check worker wages is already define or not if not tell then to define wages first
+        if(!workerWages){
+            const wagesDefined = await Wages.findOne({ tenantId, workerId: worker._id  }).session(session);
+           if(wagesDefined.effectiveToDate !==null || !wagesDefined ){
+            await session.abortTransaction();
+            return res.status(400).json({ success: false, message: "Please define wages for worker before assigning to project" });
+           }else{
+             await Wages.findOneAndUpdate({ tenantId, workerId: worker._id, effectiveToDate: null }, { effectiveToDate: new Date() }, { session });
+           }
+        }
+
+
+        
 
         // Validate project
         const project = await Project.findOne({ _id: projectId, tenantId }).session(session);
@@ -214,7 +258,21 @@ export const assignWorkerToProject = async (req, res) => {
             startDate: startDate ? new Date(startDate) : new Date(),
         };
 
+
+
         await ProjectMember.create([doc], { session });
+
+        // find worker wages already exist cut it 
+
+        
+
+        await Wages.create([{
+            tenantId,
+            workerId: worker._id,
+            dailyWage: workerWages,
+            effectiveFromDate: new Date(),
+        }],{session})
+
 
         await session.commitTransaction();
 

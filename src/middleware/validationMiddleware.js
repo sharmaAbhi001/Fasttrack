@@ -16,7 +16,7 @@ export function validateData (schema) {
                 const errorMessage = error?.issues.map((issue)=>({
                     message: `${issue.path.join('.')} is ${issue.message}`
                 }))
-          return  res.json({error:"Invalid data",details:errorMessage,
+          return  res.status(400).json({error:"Invalid data",details:errorMessage,
            })
             } else {
                 return res.json({ error: 'Internal Server Error' });

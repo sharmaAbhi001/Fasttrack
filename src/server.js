@@ -8,6 +8,7 @@ import authRouter from "./routes/auth.route.js";
 import tenantRouter from "./routes/tenant.routes.js";
 import projectRouter from "./routes/project.routes.js";
 import userRouter from "./routes/user.routes.js";
+import workerRouter from "./routes/worker.routes.js";
 
 
 
@@ -28,6 +29,8 @@ app.use("/api/auth",authRouter)
 app.use("/api/tenant",tenantRouter)
 app.use("/api/project",projectRouter)
 app.use("/api/user",userRouter)
+app.use("/api/worker",workerRouter)
+
 
 connectDB().then( async () => {
 
