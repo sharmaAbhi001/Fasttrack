@@ -18,3 +18,12 @@ export const workerUpdateSchema = z.object({
     address: z.string().min(5, "Address should be at least 5 characters long").optional(),
     status: z.enum(["active", "inactive"]).optional(),
 });
+
+export const workerAssignProjectSchema = z.object({
+    projectId: z.string().min(1, "Project ID is required"),
+    tenantId: z.string().min(1, "Tenant ID is required"),
+    workerId: z.string().min(1, "Worker ID is required"),
+    startDate: z.coerce.date("Invalid start date").optional(),
+    endDate: z.coerce.date("Invalid end date").optional(),
+    workerWages: z.number().positive("Worker wages must be a positive number and is required"),
+});

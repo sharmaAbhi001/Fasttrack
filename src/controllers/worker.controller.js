@@ -187,7 +187,7 @@ export const assignWorkerToProject = async (req, res) => {
     try {
         const { workerId, projectId } = req.params;
         const { tenantId } = req.userData;
-        const { startDate,workerWages, endDate } = req.body;
+        const { startDate,workerWages,  overtimeRate, endDate } = req.body;
 
         if (!tenantId) {
             await session.abortTransaction();
@@ -201,22 +201,6 @@ export const assignWorkerToProject = async (req, res) => {
             return res.status(404).json({ success: false, message: "Worker not found" });
         }
 
-
-
-     
-                    // check worker wages is already define or not if not tell then to define wages first
-        if(!workerWages){
-            const wagesDefined = await Wages.findOne({ tenantId, workerId: worker._id  }).session(session);
-           if(wagesDefined.effectiveToDate !==null || !wagesDefined ){
-            await session.abortTransaction();
-            return res.status(400).json({ success: false, message: "Please define wages for worker before assigning to project" });
-           }else{
-             await Wages.findOneAndUpdate({ tenantId, workerId: worker._id, effectiveToDate: null }, { effectiveToDate: new Date() }, { session });
-           }
-        }
-
-
-        
 
         // Validate project
         const project = await Project.findOne({ _id: projectId, tenantId }).session(session);
@@ -250,6 +234,14 @@ export const assignWorkerToProject = async (req, res) => {
             );
         }
 
+
+        // discountinue previous wages if exist
+         await Wages.findOneAndUpdate(
+            { workerId: worker._id, tenantId, effectiveToDate: { $exists: false } },
+            { effectiveToDate: new Date() },
+            { session }
+        );
+
         // Create new project membership
         const doc = {
             tenantId,
@@ -263,13 +255,11 @@ export const assignWorkerToProject = async (req, res) => {
         await ProjectMember.create([doc], { session });
 
         // find worker wages already exist cut it 
-
-        
-
         await Wages.create([{
             tenantId,
             workerId: worker._id,
             dailyWage: workerWages,
+            overtimeRate,
             effectiveFromDate: new Date(),
         }],{session})
 
@@ -398,121 +388,52 @@ export const assignMultipleWorkersToProject = async (req, res) => {
     } finally {
         session.endSession();
     }
-}
+};
 
-export const markWorkerAttendance = async (req, res) => {
+
+export const assignWageToWorker = async (req, res) => {
     try {
         const { workerId } = req.params;
         const { tenantId } = req.userData;
-        const { projectId, date, checkIn, checkOut, status } = req.body;
+        const { dailyWage, overtimeRate, effectiveFromDate, effectiveToDate } = req.body;
 
         if (!tenantId) {
             return res.status(400).json({ success: false, message: "Tenant not found" });
         }
 
-        if (!projectId) {
-            return res.status(400).json({ success: false, message: "projectId is required" });
-        }
-
-        if (!mongoose.Types.ObjectId.isValid(workerId) || !mongoose.Types.ObjectId.isValid(projectId)) {
-            return res.status(400).json({ success: false, message: "Invalid workerId or projectId" });
+        if (!mongoose.Types.ObjectId.isValid(workerId)) {
+            return res.status(400).json({ success: false, message: "Invalid workerId" });
         }
 
         const worker = await Worker.findOne({ _id: workerId, tenantId });
+
         if (!worker) {
             return res.status(404).json({ success: false, message: "Worker not found" });
         }
 
-        const project = await Project.findOne({ _id: projectId, tenantId });
-        if (!project) {
-            return res.status(404).json({ success: false, message: "Project not found" });
-        }
+       // Check if there's an active wage record and end it
+        await Wages.findOneAndUpdate(
+            { workerId: worker._id, tenantId, effectiveToDate: { $exists: false } },
+            { effectiveToDate: new Date() }
+        );
 
-        const attendanceDate = date ? new Date(date) : new Date();
-        if (Number.isNaN(attendanceDate.getTime())) {
-            return res.status(400).json({ success: false, message: "Invalid date" });
-        }
-        attendanceDate.setHours(0, 0, 0, 0);
-
-        const activeAssignment = await ProjectMember.findOne({
+        const wages = await Wages.create({
             tenantId,
-            workerId,
-            projectId,
-            $or: [
-                { endDate: { $exists: false } },
-                { endDate: null },
-                { endDate: { $gte: attendanceDate } }
-            ]
-        });
-
-        if (!activeAssignment) {
-            return res.status(400).json({ success: false, message: "Worker is not assigned to this project" });
-        }
-
-        const update = {};
-
-        if (typeof status !== "undefined") update.status = status;
-
-        if (typeof checkIn !== "undefined") {
-            const parsedCheckIn = new Date(checkIn);
-            if (Number.isNaN(parsedCheckIn.getTime())) {
-                return res.status(400).json({ success: false, message: "Invalid checkIn" });
-            }
-            update.checkIn = parsedCheckIn;
-        }
-
-        if (typeof checkOut !== "undefined") {
-            const parsedCheckOut = new Date(checkOut);
-            if (Number.isNaN(parsedCheckOut.getTime())) {
-                return res.status(400).json({ success: false, message: "Invalid checkOut" });
-            }
-            update.checkOut = parsedCheckOut;
-        }
-
-        if (update.checkIn && update.checkOut && update.checkOut < update.checkIn) {
-            return res.status(400).json({ success: false, message: "checkOut cannot be before checkIn" });
-        }
-
-        if (update.checkIn && update.checkOut) {
-            update.workingHours = Math.max(0, (update.checkOut - update.checkIn) / (1000 * 60 * 60));
-        }
-
-        const filter = { tenantId, workerId, projectId, date: attendanceDate };
-
-        let attendance = await Attendance.findOne(filter);
-        if (attendance) {
-            attendance = await Attendance.findOneAndUpdate(
-                filter,
-                { $set: update },
-                { new: true, runValidators: true }
-            );
-
-            return res.status(200).json({
-                success: true,
-                message: "Attendance updated successfully",
-                data: attendance
-            });
-        }
-
-        const created = await Attendance.create({
-            tenantId,
-            workerId,
-            projectId,
-            date: attendanceDate,
-            ...update
+            workerId: worker._id,
+            dailyWage,
+            overtimeRate,
+            effectiveFromDate,
+            effectiveToDate
         });
 
         return res.status(201).json({
             success: true,
-            message: "Attendance marked successfully",
-            data: created
+            message: "Wages assigned to worker successfully",
+            data: wages
         });
-
     } catch (error) {
         console.log(error);
-        if (error && error.code === 11000) {
-            return res.status(400).json({ success: false, message: "Attendance already marked for this date" });
-        }
         return res.status(500).json({ success: false, message: error.message });
     }
 };
+

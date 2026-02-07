@@ -9,6 +9,7 @@ import tenantRouter from "./routes/tenant.routes.js";
 import projectRouter from "./routes/project.routes.js";
 import userRouter from "./routes/user.routes.js";
 import workerRouter from "./routes/worker.routes.js";
+import attendanceRouter from "./routes/attendance.route.js";
 
 
 
@@ -30,6 +31,7 @@ app.use("/api/tenant",tenantRouter)
 app.use("/api/project",projectRouter)
 app.use("/api/user",userRouter)
 app.use("/api/worker",workerRouter)
+app.use("/api/attendance",attendanceRouter)
 
 
 connectDB().then( async () => {

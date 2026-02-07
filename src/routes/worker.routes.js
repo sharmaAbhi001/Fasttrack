@@ -14,7 +14,6 @@ router.patch("/:workerId", validateData(workerUpdateSchema), permissionValidatio
 router.delete("/:workerId", permissionValidation(["FULL_ACCESS", "WORKER_CREATE"]), deleteWorker);
 router.post("/:workerId/assign/:projectId", permissionValidation(["FULL_ACCESS", "WORKER_CREATE"]), assignWorkerToProject);
 router.post("/assign-multiple/:projectId", permissionValidation(["FULL_ACCESS", "WORKER_CREATE"]), assignMultipleWorkersToProject);
-router.post("/:workerId/attendance", permissionValidation(["FULL_ACCESS", "ATTENDANCE_MARK"]), markWorkerAttendance);
 
 
 export default router;
