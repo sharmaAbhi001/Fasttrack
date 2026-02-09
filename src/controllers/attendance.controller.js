@@ -1,8 +1,9 @@
-import { Attendance } from "../models/attendance";
-import { Project } from "../models/project";
-import { ProjectMember } from "../models/projectMember";
-import { Worker } from "../models/worker";
-
+import { Attendance } from "../models/attendance.js";
+import { Project } from "../models/project.js";
+import { ProjectMember } from "../models/projectMember.js";
+import { Worker } from "../models/worker.js";
+import asyncHandler from "../utils/handler.js";
+import ApiError from "../utils/errApi.js";
 
 
 
@@ -122,3 +123,31 @@ export const markWorkerAttendance = async (req, res) => {
         return res.status(500).json({ success: false, message: error.message });
     }
 };
+
+// here month is in query params 
+
+export const  getAttendanceOfProject = asyncHandler(async ( req,res)=>{
+
+    const {projectId} = req.params;
+    const {monthYear} = req.query;
+    const {tenantId} = req.userData;
+
+
+    const project = await Project.findById(projectId);
+
+    if(!project){
+        return res.status(404).json(
+            new ApiError(404,"Project not fount")
+        )
+    }
+
+    // find all the worker of the project and tenant id with their attendance of this month 
+    // create mongoose pipeline 
+
+    
+
+
+
+               
+})
+

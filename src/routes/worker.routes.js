@@ -2,7 +2,7 @@ import express from "express";
 import { permissionValidation } from "../middleware/permissionValidation.js";
 import { validateData } from "../middleware/validationMiddleware.js";
 import { workerCreateSchema, workerUpdateSchema } from "../Schemas/workerSchema.js";
-import { createWorker, getWorkers, getWorkerById, updateWorker, deleteWorker, assignWorkerToProject, assignMultipleWorkersToProject, markWorkerAttendance } from "../controllers/worker.controller.js";
+import { createWorker, getWorkers, getWorkerById, updateWorker, deleteWorker, assignWorkerToProject, assignMultipleWorkersToProject } from "../controllers/worker.controller.js";
 
 const router = express.Router();
 

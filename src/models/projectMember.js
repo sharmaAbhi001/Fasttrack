@@ -33,10 +33,15 @@ projectMemberSchema.index(
   { unique: true, sparse: true }
 );
 
+
+
 projectMemberSchema.index(
-  { userId: 1, projectId: 1 },
-  { unique: true, sparse: true }
-)
+  { workerId:1 },
+  {
+    unique:true,
+    partialFilterExpression:{ endDate:null }
+  }
+);
 
 export const ProjectMember =
   mongoose.models.ProjectMember ||

@@ -15,8 +15,9 @@ const wagesSchema = new Schema({
     type: Number,
     required: true,
   },
-  overtimeRate: {
+  overTimeRate: {
     type: Number,
+    required: true,
   },
   effectiveFromDate: {
     type: Date,

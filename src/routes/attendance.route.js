@@ -1,5 +1,5 @@
 import express from "express";
-import { markWorkerAttendance } from "../controllers/attendance.controller";
+import { markWorkerAttendance } from "../controllers/attendance.controller.js";
 
 
 
@@ -13,6 +13,10 @@ router.get("/", (req, res) => {
 });
 
 router.post("/mark/:workerId",markWorkerAttendance);
+
+//get attendance of a worker one month 
+
+// get attendance of all worker 
 
 
 

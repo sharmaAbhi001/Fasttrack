@@ -17,7 +17,7 @@ export const permissionValidation = (requiredPermissions=[]) => {
        if (!token) {
         return res.status(401).json({
           success: false,
-          message: "Token missing"
+          message: "Unauthorized Action"
         });
       }
         

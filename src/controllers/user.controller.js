@@ -5,6 +5,7 @@ import { User } from "../models/users.js";
 import mongoose from "mongoose";
 import { Project } from "../models/project.js";
 import { ProjectMember } from "../models/projectMember.js";
+import { ProjectSupervisor } from "../models/ProjectSupervoiser.js";
 
 
 
@@ -287,7 +288,7 @@ export const assignUserToProject = async (req, res) => {
             if (endDate) doc.endDate = new Date(endDate);
 
             // Create membership (unique index prevents duplicates)
-            await ProjectMember.create([doc], { session });
+            await ProjectSupervisor.create([doc], { session });
 
             await session.commitTransaction();
 

@@ -187,7 +187,7 @@ export const assignWorkerToProject = async (req, res) => {
     try {
         const { workerId, projectId } = req.params;
         const { tenantId } = req.userData;
-        const { startDate,workerWages,  overtimeRate, endDate } = req.body;
+        const { startDate,workerWages,  overTimeRate, endDate } = req.body;
 
         if (!tenantId) {
             await session.abortTransaction();
@@ -259,7 +259,7 @@ export const assignWorkerToProject = async (req, res) => {
             tenantId,
             workerId: worker._id,
             dailyWage: workerWages,
-            overtimeRate,
+            overTimeRate,
             effectiveFromDate: new Date(),
         }],{session})
 
@@ -276,6 +276,7 @@ export const assignWorkerToProject = async (req, res) => {
         await session.abortTransaction();
         console.log(error);
         if (error && error.code === 11000) {
+            console.log(error)
             return res.status(400).json({ success: false, message: "Worker already assigned to this project" });
         }
         return res.status(500).json({ success: false, message: error.message });
@@ -318,7 +319,7 @@ export const assignMultipleWorkersToProject = async (req, res) => {
 
         // Check if any worker is already assigned to an active project
         const conflictingAssignments = await ProjectMember.find(
-            { workerId: { $in: workerIds }, tenantId },
+            { workerId: { $in: workerIds }, tenantId , endDate: null},
             null,
             { session }
         ).populate("projectId");
