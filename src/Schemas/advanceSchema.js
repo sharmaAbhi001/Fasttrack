@@ -24,11 +24,10 @@ export const advanceCreateSchema = z.object({
         .max(500, "Reason must not exceed 500 characters")
         .describe("Reason for advance request"),
     date: z
-        .string()
-        .datetime()
-        .or(z.date())
-        .transform(val => new Date(val))
-        .refine(date => date <= new Date(), "Date cannot be in the future")
+        .union([z.string(), z.date()])
+        .transform((val) => (val instanceof Date ? val : new Date(val)))
+        .refine((d) => !Number.isNaN(d.getTime()), "Invalid date")
+        .refine((d) => d <= new Date(), "Date cannot be in the future")
         .describe("Date of advance request"),
 }).strict();
 

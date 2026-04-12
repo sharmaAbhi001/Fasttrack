@@ -1,11 +1,12 @@
 import express from "express"
-import { createSystemAdmin, login } from "../controllers/auth.controller.js";
+import { createSystemAdmin, getTenantMe, login } from "../controllers/auth.controller.js";
 
 
 
 const router = express.Router();
 
 router.post("/login", login);
+router.get("/me", getTenantMe);
 router.post ("/", createSystemAdmin);
 
 

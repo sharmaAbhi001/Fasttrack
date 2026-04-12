@@ -1,9 +1,30 @@
 import { z } from "zod";
 
+/** Remove spaces so +91 98765… matches the same regex as +9198765… */
+function stripPhoneWhitespace(val) {
+    if (typeof val !== "string") return val;
+    return val.replace(/\s/g, "");
+}
+
+function preprocessPhoneOptional(val) {
+    if (val === undefined || val === null) return undefined;
+    if (typeof val !== "string") return val;
+    const s = stripPhoneWhitespace(val);
+    return s === "" ? undefined : s;
+}
+
 export const workerCreateSchema = z.object({
     code: z.string().min(1, "Code is required"),
     name: z.string().min(3, "Name should be at least 3 characters long"),
-    phone: z.string().regex(/^\+91[6-9]\d{9}$/, "Enter a valid phone number starting with +91"),
+    phone: z.preprocess(
+        stripPhoneWhitespace,
+        z
+            .string()
+            .regex(
+                /^\+91[6-9]\d{9}$/,
+                "Indian mobile: +91 then 10 digits; first digit after +91 must be 6–9 (no spaces needed)"
+            )
+    ),
     address: z.string().min(5, "Address should be at least 5 characters long").optional(),
     joinDate: z.coerce.date("Invalid join date"),
     status: z.enum(["active", "inactive"]).default("active").optional(),
@@ -14,7 +35,16 @@ export const workerCreateSchema = z.object({
 export const workerUpdateSchema = z.object({
     code: z.string().min(1, "Code is required").optional(),
     name: z.string().min(3, "Name should be at least 3 characters long").optional(),
-    phone: z.string().regex(/^\+91[6-9]\d{9}$/, "Enter a valid phone number starting with +91").optional(),
+    phone: z.preprocess(
+        preprocessPhoneOptional,
+        z
+            .string()
+            .regex(
+                /^\+91[6-9]\d{9}$/,
+                "Indian mobile: +91 then 10 digits; first digit after +91 must be 6–9"
+            )
+            .optional()
+    ),
     address: z.string().min(5, "Address should be at least 5 characters long").optional(),
     status: z.enum(["active", "inactive"]).optional(),
 });

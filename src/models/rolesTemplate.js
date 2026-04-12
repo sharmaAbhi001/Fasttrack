@@ -1,16 +1,24 @@
 import mongoose,{Schema} from "mongoose";
 
 
-const roleTemplateSchema  = new Schema({
-        name: {
-        type: String,
-        required: true,
+const roleTemplateSchema = new Schema(
+  {
+    name: {
+      type: String,
+      required: true,
     },
-    defaultPermissions: [{
-    type: Schema.Types.ObjectId,
-    ref: "Permission"
-  }],
-    },{timestamps: true});
+    description: {
+      type: String,
+    },
+    defaultPermissions: [
+      {
+        type: Schema.Types.ObjectId,
+        ref: "Permission",
+      },
+    ],
+  },
+  { timestamps: true }
+);
     
 
 

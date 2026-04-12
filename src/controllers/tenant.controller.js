@@ -69,11 +69,15 @@ export const createTenant = async (req, res) => {
 
     const tenantUser = tenantUsers[0];
 
-     const rolePermissions = await RolePermission.create([{
-        tenantId: tenant._id,
-        roleId: tenantRoles[0]._id,
-        permissionId: ownerRole.defaultPermissions,
-    }],{session});
+    const ownerPermIds = (ownerRole.defaultPermissions || []).filter(Boolean);
+    const ownerRolePermDocs = ownerPermIds.map((permissionId) => ({
+      tenantId: tenant._id,
+      roleId: tenantRoles[0]._id,
+      permissionId,
+    }));
+    if (ownerRolePermDocs.length > 0) {
+      await RolePermission.create(ownerRolePermDocs, { session });
+    }
 
 
     // create tenant role permission

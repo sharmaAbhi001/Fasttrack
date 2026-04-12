@@ -9,3 +9,13 @@ export const projectCreateSchema = z.object({
     startDate: z.coerce.date().optional(),
     endDate: z.coerce.date().optional(),
 });
+
+export const projectUpdateSchema = z
+  .object({
+    projectName: z.string().min(3).optional(),
+    location: z.string().min(3).optional(),
+    startDate: z.coerce.date().optional(),
+    endDate: z.coerce.date().optional(),
+    status: z.enum(["active", "inactive"]).optional(),
+  })
+  .strict();

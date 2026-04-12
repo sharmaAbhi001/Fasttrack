@@ -14,6 +14,13 @@ export const createUser = async (req, res) => {
     const { email, password , name ,phone , address , roleId  } = req.body;
     const {tenantId} = req.userData;
 
+    if (!req.userData.isOwner) {
+        return res.status(403).json({
+            success: false,
+            message: "Only the organization owner can create HR or supervisor accounts.",
+        });
+    }
+
     const session = await mongoose.startSession();
     session.startTransaction();
 
@@ -74,8 +81,16 @@ export const createUser = async (req, res) => {
 export const getUsers = async (req, res) => {
 
    try {
+
+    if (!req.userData.isOwner) {
+        return res.status(403).json({
+            success: false,
+            message: "Only the organization owner can list tenant staff accounts.",
+        });
+    }
     
     const {tenantId} = req.userData;
+    const authCollection = UserAuth.collection.name;
 
     const users = await User.aggregate([
      {
@@ -84,11 +99,24 @@ export const getUsers = async (req, res) => {
         }
      },
      {
+        $lookup: {
+            from: authCollection,
+            localField: "authId",
+            foreignField: "_id",
+            as: "_authDoc",
+        },
+     },
+     {
+        $addFields: {
+            email: { $ifNull: [{ $arrayElemAt: ["$_authDoc.email", 0] }, null] },
+        },
+     },
+     {
         $project:{
             _id:1,
             name:1,
             email:1,
-            roleId:1
+            roleId:1,
         }
      },
      {
@@ -150,49 +178,81 @@ export const editUser = async (req, res) => {
     const { email, password, name, roleId } = req.body;
     const { tenantId } = req.userData;
 
+    if (!req.userData.isOwner) {
+        return res.status(403).json({
+            success: false,
+            message: "Only the organization owner can edit staff accounts or roles.",
+        });
+    }
+
+    if (!email || !name || !roleId) {
+        return res.status(400).json({
+            success: false,
+            message: "Email, name, and roleId are required",
+        });
+    }
+
+    const passwordTrimmed =
+        password !== undefined && password !== null ? String(password).trim() : "";
+    if (passwordTrimmed.length > 0 && passwordTrimmed.length < 8) {
+        return res.status(400).json({
+            success: false,
+            message: "Password must be at least 8 characters",
+        });
+    }
+
     const session = await mongoose.startSession();
-    session.startTransaction();
-
     try {
-        // Validate required fields
-        if (!email || !password || !name || !roleId) {
-            return res.status(400).json({
-                success: false,
-                message: "Email, password, name, and roleId are required"
-            });
-        }
+        session.startTransaction();
 
-        // Check if the new role exists in the tenant
         const validRole = await Role.findOne({ tenantId, _id: roleId }, null, { session });
         if (!validRole) {
             await session.abortTransaction();
             return res.status(400).json({ success: false, message: "Role not found" });
         }
 
-        // Find the user
         const user = await User.findOne({ _id: userId, tenantId }, null, { session });
         if (!user) {
             await session.abortTransaction();
             return res.status(404).json({ success: false, message: "User not found" });
         }
 
-        // Find and update auth user (email and password) - use save() to trigger pre-hooks
         const authUser = await UserAuth.findById(user.authId, null, { session });
         if (!authUser) {
             await session.abortTransaction();
             return res.status(404).json({ success: false, message: "Auth user not found" });
         }
 
-        authUser.email = email;
-        authUser.password = password;
+        const emailNext = String(email).trim();
+        if (emailNext.toLowerCase() !== String(authUser.email).trim().toLowerCase()) {
+            const taken = await UserAuth.findOne({ email: emailNext }, null, { session })
+                .select("_id")
+                .lean();
+            if (taken && String(taken._id) !== String(authUser._id)) {
+                await session.abortTransaction();
+                return res.status(403).json({
+                    success: false,
+                    message: "User already exist with this email",
+                });
+            }
+        }
+
+        authUser.email = emailNext;
+        if (passwordTrimmed.length > 0) {
+            authUser.password = passwordTrimmed;
+        }
         await authUser.save({ session });
 
-        // Update user (name, roleId, and email)
         const updatedUser = await User.findByIdAndUpdate(
             userId,
-            { name, roleId, email },
+            { name, roleId },
             { new: true, runValidators: true, session }
         );
+
+        if (!updatedUser) {
+            await session.abortTransaction();
+            return res.status(404).json({ success: false, message: "User not found" });
+        }
 
         await session.commitTransaction();
 
@@ -202,17 +262,27 @@ export const editUser = async (req, res) => {
             data: {
                 id: updatedUser._id,
                 name: updatedUser.name,
-                email: updatedUser.email,
-                roleId: updatedUser.roleId
-            }
+                email: authUser.email,
+                roleId: updatedUser.roleId,
+            },
         });
-
     } catch (error) {
-        await session.abortTransaction();
+        try {
+            await session.abortTransaction();
+        } catch {
+            /* noop: e.g. already committed or nothing to abort */
+        }
         console.log(error);
+        const code = error?.code;
+        if (code === 11000) {
+            return res.status(403).json({
+                success: false,
+                message: "User already exist with this email",
+            });
+        }
         return res.status(400).json({ success: false, message: error.message });
     } finally {
-        session.endSession();
+        await session.endSession();
     }
 }
 
@@ -220,6 +290,13 @@ export const getUserById = async (req, res) => {
     try {
         const { userId } = req.params;
         const { tenantId } = req.userData;
+
+        if (!req.userData.isOwner) {
+            return res.status(403).json({
+                success: false,
+                message: "Only the organization owner can view tenant staff details.",
+            });
+        }
 
         if (!tenantId) {
             return res.status(400).json({ success: false, message: "Tenant not found" });
@@ -258,6 +335,14 @@ export const assignUserToProject = async (req, res) => {
             const { userId, projectId } = req.params;
             const { tenantId } = req.userData;
             const { startDate, endDate } = req.body;
+
+            if (!req.userData.isOwner) {
+                await session.abortTransaction();
+                return res.status(403).json({
+                    success: false,
+                    message: "Only the organization owner can assign HR or supervisors to a project.",
+                });
+            }
 
             if (!tenantId) {
                 await session.abortTransaction();

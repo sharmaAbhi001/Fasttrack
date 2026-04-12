@@ -193,50 +193,60 @@ export const getAdvanceStatus = async (req, res) => {
                 _id: advanceId,
                 tenantId
             })
-                .populate('workerId', 'name code phone')
-                .populate('projectId', 'name code')
-                .populate('approvedBy', 'name email')
-                .populate('requestedBy', 'name email');
-        } else if (workerId) {
-            // Get all advances for a worker
+                .populate("workerId", "name code phone")
+                .populate("projectId", "name location")
+                .populate("approvedBy", "name phone")
+                .populate("requestedBy", "name phone");
+            if (!advances) {
+                return res.status(404).json({
+                    success: false,
+                    message: "Advance not found",
+                });
+            }
+            return res.status(200).json({
+                success: true,
+                data: advances,
+                count: 1,
+            });
+        }
+
+        if (workerId) {
             const query = { workerId, tenantId };
             if (projectId) query.projectId = projectId;
-            
+
             advances = await Advance.find(query)
-                .populate('workerId', 'name code phone')
-                .populate('projectId', 'name code')
-                .populate('approvedBy', 'name email')
-                .populate('requestedBy', 'name email')
+                .populate("workerId", "name code phone")
+                .populate("projectId", "name location")
+                .populate("approvedBy", "name phone")
+                .populate("requestedBy", "name phone")
                 .sort({ createdAt: -1 });
         } else if (projectId) {
-            // Get all advances for a project
             advances = await Advance.find({ projectId, tenantId })
-                .populate('workerId', 'name code phone')
-                .populate('projectId', 'name code')
-                .populate('approvedBy', 'name email')
-                .populate('requestedBy', 'name email')
+                .populate("workerId", "name code phone")
+                .populate("projectId", "name location")
+                .populate("approvedBy", "name phone")
+                .populate("requestedBy", "name phone")
                 .sort({ createdAt: -1 });
         } else {
-            // Get all advances in tenant
             advances = await Advance.find({ tenantId })
-                .populate('workerId', 'name code phone')
-                .populate('projectId', 'name code')
-                .populate('approvedBy', 'name email')
-                .populate('requestedBy', 'name email')
+                .populate("workerId", "name code phone")
+                .populate("projectId", "name location")
+                .populate("approvedBy", "name phone")
+                .populate("requestedBy", "name phone")
                 .sort({ createdAt: -1 });
         }
 
         if (!advances || advances.length === 0) {
             return res.status(404).json({
                 success: false,
-                message: "No advances found"
+                message: "No advances found",
             });
         }
 
         res.status(200).json({
             success: true,
             data: advances,
-            count: Array.isArray(advances) ? advances.length : 1
+            count: advances.length,
         });
     } catch (error) {
         console.error(error);
@@ -375,8 +385,9 @@ export const getPendingAdvances = async (req, res) => {
             status: 'pending',
             advanceType: 'request'
         })
-            .populate('workerId', 'name code phone')
-            .populate('requestedBy', 'name email')
+            .populate("workerId", "name code phone")
+            .populate("projectId", "name location")
+            .populate("requestedBy", "name phone")
             .sort({ createdAt: -1 });
 
         res.status(200).json({

@@ -5,6 +5,11 @@ import { encrypt } from "../utils/encryption.js";
 
 
 const workerDocumentSchema = new Schema({
+    tenantId: {
+        type: Schema.Types.ObjectId,
+        ref: "Tenant",
+        required: true,
+    },
     workerId: {
         type: Schema.Types.ObjectId,
         ref: "Worker",

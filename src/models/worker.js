@@ -6,10 +6,9 @@ const workerSchema = new Schema({
     ref: "Tenant",
     required: true,
   },
-  code:{
-    type:String,
-    required:true,
-    unique:true
+  code: {
+    type: String,
+    required: true,
   },
   name: {
     type: String,
@@ -28,6 +27,11 @@ const workerSchema = new Schema({
     type: String,
     enum: ["active", "inactive"],
     default: "active",
+  },
+  /** True after face capture is saved (FaceData). */
+  registrationComplete: {
+    type: Boolean,
+    default: false,
   },
 },{ timestamps: true });
 

@@ -26,7 +26,6 @@ const userSchema = new Schema({
     phone: {
         type: String,
         required: true,
-        unique: true,
     },
     address: {
         type: String,
@@ -39,7 +38,7 @@ const userSchema = new Schema({
     },
 },{timestamps: true});
 
-// users schema
-userSchema.index({ authId: 1, tenantId: 1 }, { unique: true }); //Indexes: { authId: 1, tenantId: 1 } UNIQUE
+userSchema.index({ authId: 1, tenantId: 1 }, { unique: true });
+userSchema.index({ tenantId: 1, phone: 1 }, { unique: true });
 
 export const User = mongoose.models.User || mongoose.model("User", userSchema);

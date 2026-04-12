@@ -1,5 +1,7 @@
 import { User } from "../models/users.js";
-import {Tenant} from "../models/tenants.js";
+import { Tenant } from "../models/tenants.js";
+import { Role } from "../models/role.js";
+import { RolePermission } from "../models/rolePermission.js";
 
 
 export const tenantUserAuthService = async (authUser) => {
@@ -26,6 +28,16 @@ export const tenantUserAuthService = async (authUser) => {
     throw new Error("TENANT_INACTIVE");
   }
 
+  const role = await Role.findById(tenantUser.roleId).select("name").lean();
+  const rolePermissions = await RolePermission.find({
+    tenantId: tenantUser.tenantId,
+    roleId: tenantUser.roleId,
+  }).populate({ path: "permissionId", select: "code" });
+  const permissionCodes = rolePermissions.map((p) => p.permissionId?.code).filter(Boolean);
+  const roleNameUpper = (role?.name ?? "").toUpperCase();
+  const hasFullAccess =
+    permissionCodes.includes("FULL_ACCESS") || roleNameUpper === "OWNER";
+
   // 3. return data (NO res here)
   return {
     tokenPayload: {
@@ -37,12 +49,15 @@ export const tenantUserAuthService = async (authUser) => {
     },
     responseData: {
       authId: authUser._id,
-      userName: authUser.name,
       type: authUser.type,
       roleId: tenantUser.roleId,
       userId: tenantUser._id,
       userName: tenantUser.name,
-      tenantName: tenant.name
+      tenantName: tenant.name,
+      roleName: role?.name ?? "",
+      hasFullAccess,
+      /** Permission codes for this tenant role (UI nav + client checks). */
+      permissionCodes,
     }
   };
 };

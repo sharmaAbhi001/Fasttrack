@@ -61,10 +61,10 @@ attendanceSchema.pre("save", function(next){
 
 });
 
-/* One record per day */
+/* One record per worker per project per calendar day */
 attendanceSchema.index(
-  { tenantId:1, workerId:1, date:1 },
-  { unique:true }
+  { tenantId: 1, workerId: 1, projectId: 1, date: 1 },
+  { unique: true }
 );
 
 /* Faster reports */

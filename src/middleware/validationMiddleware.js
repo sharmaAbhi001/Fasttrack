@@ -27,3 +27,6 @@ export function validateData (schema) {
     };
 
 }
+
+/** Alias used by advance routes */
+export const validateRequest = validateData;

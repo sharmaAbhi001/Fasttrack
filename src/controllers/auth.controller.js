@@ -1,7 +1,9 @@
 import bcrypt from "bcrypt";
+import jwt from "jsonwebtoken";
 
 import { getJwtToken } from "../utils/jwtTokenGenerate.js";
-import {UserAuth} from "../models/auth_users.js";
+import { extractBearerToken } from "../utils/extractBearerToken.js";
+import { UserAuth } from "../models/auth_users.js";
 import { SystemAdmin } from "../models/systemAdmin.js";
 import mongoose from "mongoose";
 import { tenantUserAuthService } from "../services/auth.services.js";
@@ -14,17 +16,19 @@ export const login = async (req, res) => {
         
         const user = await UserAuth.findOne({email});
 
-        if(!user){
-            return res.status(404).json({success: false,
-                message: "User not found"
+        if (!user) {
+            return res.status(401).json({
+                success: false,
+                message: "Invalid credentials",
             });
         }
 
         const isMatch = await bcrypt.compare(password, user.password);
 
-        if(!isMatch){
-            return res.status(400).json({success: false,
-                message: "Invalid credentials"
+        if (!isMatch) {
+            return res.status(401).json({
+                success: false,
+                message: "Invalid credentials",
             });
         }
 
@@ -40,8 +44,6 @@ export const login = async (req, res) => {
        if(user.type === "tenantUser"){
         const {tokenPayload,responseData} = await tenantUserAuthService(user);
 
-        console.log(tokenPayload)
-
        const token =  getJwtToken(tokenPayload);
 
       res.cookie("token", token, {
@@ -50,9 +52,10 @@ export const login = async (req, res) => {
         sameSite: "none",
      });
 
-     return res.status(200).json({success: true,
+     return res.status(200).json({
+        success: true,
         message: "Login successful",
-        data: responseData
+        data: { ...responseData, token },
     });
 
     }
@@ -61,6 +64,13 @@ export const login = async (req, res) => {
   const adminProfile = await SystemAdmin.findOne({
     authId: user._id
   });
+
+  if (!adminProfile) {
+    return res.status(500).json({
+      success: false,
+      message: "System admin profile missing",
+    });
+  }
 
   const tokenPayload = {
     authId: user._id,
@@ -76,9 +86,10 @@ res.cookie("token", token, {
 
 
 
-        res.status(200).json({success: true,
+        res.status(200).json({
+            success: true,
             message: "Login successful",
-            data: adminProfile
+            data: { ...adminProfile.toObject(), token },
         });
 
 
@@ -92,6 +103,38 @@ res.cookie("token", token, {
     }
 
 }
+
+/** Current tenant user profile (role, flags). Same fields as login body minus token; Bearer or cookie JWT. */
+export const getTenantMe = async (req, res) => {
+  try {
+    const token = extractBearerToken(req);
+    if (!token) {
+      return res.status(401).json({ success: false, message: "Unauthorized" });
+    }
+
+    let decoded;
+    try {
+      decoded = jwt.verify(token, process.env.JWT_SECRET_KEY);
+    } catch {
+      return res.status(401).json({ success: false, message: "Invalid or expired token" });
+    }
+
+    if (decoded.type !== "tenantUser") {
+      return res.status(400).json({ success: false, message: "Not a tenant session" });
+    }
+
+    const authUser = await UserAuth.findById(decoded.authId);
+    if (!authUser) {
+      return res.status(401).json({ success: false, message: "Unauthorized" });
+    }
+
+    const { responseData } = await tenantUserAuthService(authUser);
+    return res.status(200).json({ success: true, data: responseData });
+  } catch (error) {
+    console.log(error);
+    return res.status(500).json({ success: false, message: error.message });
+  }
+};
 
 export const createSystemAdmin = async (req, res) => {
     const { name, email, password } = req.body;
