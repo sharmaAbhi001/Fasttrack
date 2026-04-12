@@ -19,53 +19,29 @@ dotenv.config();
 
 const app = express();
 
-/**
- * CORS (no proxy needed). Browsers send your SPA’s origin (e.g. http://localhost:5173); this list must include it.
- * - FRONTEND_URL: one origin (your Vite / deployed SPA URL).
- * - CORS_ORIGIN: comma-separated extra origins (optional).
- * - Cannot use * with credentials:true.
- * If neither is set, common local Vite ports are allowed.
- */
-const DEFAULT_DEV_ORIGINS = [
-  "http://localhost:5173",
-  "http://127.0.0.1:5173",
-  "http://localhost:5174",
-  "http://127.0.0.1:5174",
-  "http://localhost:4173",
-  "http://127.0.0.1:4173",
-]
-
-function buildAllowedOrigins() {
-  const raw = process.env.CORS_ORIGIN?.trim()
-  if (raw === "*") {
-    console.warn(
-      "[CORS] CORS_ORIGIN=* is incompatible with credentials:true; using defaults only."
-    )
-    return DEFAULT_DEV_ORIGINS
+function corsAllowedOrigins() {
+  const list = []
+  const push = (s) => {
+    const o = String(s).trim().replace(/\/$/, "")
+    if (o && !list.includes(o)) list.push(o)
   }
-
-  const merged = new Set(DEFAULT_DEV_ORIGINS)
-  const front = process.env.FRONTEND_URL?.trim()
-  if (front) merged.add(front)
-  if (raw) {
-    for (const part of raw.split(",")) {
-      const o = part.trim()
-      if (o) merged.add(o)
-    }
+  if (process.env.FRONTEND_URL) push(process.env.FRONTEND_URL)
+  const extra = process.env.CORS_ORIGIN?.trim()
+  if (extra) {
+    for (const part of extra.split(",")) push(part)
   }
-
-  // Only defaults when nothing custom was provided
-  if (!front && !raw) return DEFAULT_DEV_ORIGINS
-  return [...merged]
+  return list
 }
 
-const allowedOrigins = buildAllowedOrigins()
+const allowedOrigins = corsAllowedOrigins()
+if (allowedOrigins.length === 0) {
+  console.warn("[CORS] Set FRONTEND_URL (and optional CORS_ORIGIN) or browser requests will be rejected.")
+}
 
 const corsOptions = {
   origin(origin, callback) {
     if (!origin) return callback(null, true)
     if (allowedOrigins.includes(origin)) return callback(null, origin)
-    console.warn(`[CORS] Blocked origin: ${origin}. Add it to CORS_ORIGIN (comma-separated).`)
     return callback(null, false)
   },
   credentials: true,
